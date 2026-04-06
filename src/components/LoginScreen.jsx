@@ -9,6 +9,9 @@ export default function LoginScreen() {
   const [statusMessage, setStatusMessage] = useState('');
   const [showToken, setShowToken] = useState(false);
 
+  // TODO: Update this to your Cloudflare Worker URL after deployment
+  const OAUTH_WORKER_URL = '';
+
   const handleLogin = async (e) => {
     e.preventDefault();
     const token = tokenInput.trim();
@@ -35,6 +38,57 @@ export default function LoginScreen() {
     setStep('initial');
     setTokenInput('');
     setStatusMessage('');
+  };
+
+  const handleOAuthLogin = () => {
+    if (!OAUTH_WORKER_URL) {
+      setStep('error');
+      setStatusMessage('OAuth is not configured yet. Please use the Personal Access Token method below.');
+      return;
+    }
+    
+    // Open OAuth flow in a popup
+    const popup = window.open(
+      OAUTH_WORKER_URL,
+      'github-auth',
+      'width=600,height=700,left=100,top=100,scrollbars=yes'
+    );
+    
+    if (!popup) {
+      setStep('error');
+      setStatusMessage('Popup was blocked. Please allow popups for this site and try again.');
+      return;
+    }
+    
+    // Poll for successful authentication
+    const pollInterval = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollInterval);
+        // Check if token was set
+        const token = localStorage.getItem('gitnotes_github_token');
+        if (token) {
+          setStep('success');
+          setStatusMessage('Successfully authenticated via GitHub!');
+          // Reload to refresh the app state
+          setTimeout(() => window.location.reload(), 1500);
+        }
+        return;
+      }
+      
+      // Try to detect success - the popup will set localStorage and close
+      try {
+        const token = localStorage.getItem('gitnotes_github_token');
+        if (token && localStorage.getItem('gitnotes_auth_method') === 'oauth') {
+          clearInterval(pollInterval);
+          popup.close();
+          setStep('success');
+          setStatusMessage('Successfully authenticated via GitHub!');
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } catch {
+        // Cross-origin error expected, ignore
+      }
+    }, 500);
   };
 
   if (step === 'success') {
@@ -72,6 +126,23 @@ export default function LoginScreen() {
           <h1>GitNotes</h1>
         </div>
         <p className="tagline">Edit your GitHub repository notes from anywhere</p>
+        
+        {OAUTH_WORKER_URL && (
+          <button
+            type="button"
+            className="btn-github btn-oauth"
+            onClick={handleOAuthLogin}
+          >
+            <svg viewBox="0 0 24 24" className="github-icon">
+              <path fill="currentColor" d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            Login with GitHub
+          </button>
+        )}
+        
+        <div className="divider">
+          <span>or use a token</span>
+        </div>
         
         <form onSubmit={handleLogin} className="token-form">
           <label htmlFor="token" className="token-label">
