@@ -10,6 +10,11 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [path, setPath] = useState(currentPath || '');
+  const [showNewFileModal, setShowNewFileModal] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [newFileContent, setNewFileContent] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
 
   const loadContents = useCallback(async () => {
     if (!github || !settings.owner || !settings.repo) return;
@@ -55,8 +60,65 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
     onSelectFile(file, path);
   };
 
+  const createFile = async () => {
+    if (!newFileName.trim()) {
+      setCreateError('Please enter a file name');
+      return;
+    }
+
+    // Ensure .md extension
+    let fileName = newFileName.trim();
+    if (!fileName.endsWith('.md')) {
+      fileName += '.md';
+    }
+
+    // Check for invalid characters
+    if (/[~^:?*[]/.test(fileName)) {
+      setCreateError('File name contains invalid characters');
+      return;
+    }
+
+    const filePath = path ? `${path}/${fileName}` : fileName;
+
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      await github.createOrUpdateFile(
+        settings.owner,
+        settings.repo,
+        filePath,
+        newFileContent || `# ${fileName.replace('.md', '')}\n\n`,
+        `Create ${fileName}`,
+        null // no sha = create new file
+      );
+
+      // Reset form and close modal
+      setNewFileName('');
+      setNewFileContent('');
+      setShowNewFileModal(false);
+
+      // Refresh file list
+      loadContents();
+    } catch (err) {
+      setCreateError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const closeNewFileModal = () => {
+    setShowNewFileModal(false);
+    setNewFileName('');
+    setNewFileContent('');
+    setCreateError(null);
+  };
+
+  // Filter out hidden files (dotfiles) from the listing
+  const visibleContents = contents.filter(item => !item.name.startsWith('.'));
+
   // Sort: folders first, then files, both alphabetically
-  const sortedContents = [...contents].sort((a, b) => {
+  const sortedContents = [...visibleContents].sort((a, b) => {
     if (a.type !== b.type) {
       return a.type === 'dir' ? -1 : 1;
     }
@@ -105,6 +167,11 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
         </button>
       )}
 
+      <button className="btn-new-file" onClick={() => setShowNewFileModal(true)}>
+        <span>➕</span>
+        <span>New File</span>
+      </button>
+
       {loading ? (
         <div className="browser-loading">
           <div className="spinner"></div>
@@ -140,6 +207,62 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* New File Modal */}
+      {showNewFileModal && (
+        <div className="modal-overlay" onClick={closeNewFileModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create New File</h3>
+              <button className="modal-close" onClick={closeNewFileModal}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label htmlFor="newFileName">File Name</label>
+                <input
+                  id="newFileName"
+                  type="text"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  placeholder="my-note"
+                  disabled={creating}
+                />
+                <small>.md will be added automatically</small>
+              </div>
+              <div className="form-group">
+                <label htmlFor="newFileContent">Initial Content (optional)</label>
+                <textarea
+                  id="newFileContent"
+                  value={newFileContent}
+                  onChange={(e) => setNewFileContent(e.target.value)}
+                  placeholder="Start writing..."
+                  rows={6}
+                  disabled={creating}
+                />
+              </div>
+              {createError && (
+                <div className="form-error">{createError}</div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={closeNewFileModal}
+                disabled={creating}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={createFile}
+                disabled={creating}
+              >
+                {creating ? 'Creating...' : 'Create File'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
