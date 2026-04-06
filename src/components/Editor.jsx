@@ -89,7 +89,7 @@ export default function Editor({ file, currentPath, onNavigate, onBack }) {
     try {
       const message = isAutoSave 
         ? `Auto-save: ${file?.name || 'new file'}`
-        : commitMessage || `Update: ${file?.name || 'new file'}`;
+        : commitMessage || `committed from GitNotes`;
       
       await github.createOrUpdateFile(
         settings.owner,

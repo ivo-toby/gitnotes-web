@@ -84,12 +84,13 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
     setCreateError(null);
 
     try {
+      // Wait for file creation to complete, then refresh
       await github.createOrUpdateFile(
         settings.owner,
         settings.repo,
         filePath,
         newFileContent || `# ${fileName.replace('.md', '')}\n\n`,
-        `Create ${fileName}`,
+        'committed from GitNotes',
         null // no sha = create new file
       );
 
@@ -99,7 +100,7 @@ export default function FileBrowser({ onSelectFile, currentPath }) {
       setShowNewFileModal(false);
 
       // Refresh file list
-      loadContents();
+      await loadContents();
     } catch (err) {
       setCreateError(err.message);
     } finally {
