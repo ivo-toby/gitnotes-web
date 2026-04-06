@@ -105,11 +105,11 @@ export class GitHubOAuth {
       return null;
     }
 
-    // Decode content from base64
+    // Decode content from base64 (with proper UTF-8 handling)
     if (contents.content && contents.encoding === 'base64') {
       return {
         ...contents,
-        decodedContent: atob(contents.content.replace(/\n/g, ''))
+        decodedContent: decodeURIComponent(escape(atob(contents.content.replace(/\n/g, ''))))
       };
     }
 
