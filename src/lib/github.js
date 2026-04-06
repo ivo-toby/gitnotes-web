@@ -9,8 +9,8 @@ const STORAGE_KEY_USER = 'gitnotes_github_user';
 
 export class GitHubOAuth {
   constructor() {
-    this.token = sessionStorage.getItem(STORAGE_KEY_TOKEN);
-    this.user = JSON.parse(sessionStorage.getItem(STORAGE_KEY_USER) || 'null');
+    this.token = localStorage.getItem(STORAGE_KEY_TOKEN);
+    this.user = JSON.parse(localStorage.getItem(STORAGE_KEY_USER) || 'null');
   }
 
   isAuthenticated() {
@@ -45,8 +45,8 @@ export class GitHubOAuth {
     this.user = await response.json();
     this.token = token;
     
-    sessionStorage.setItem(STORAGE_KEY_TOKEN, this.token);
-    sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(this.user));
+    localStorage.setItem(STORAGE_KEY_TOKEN, this.token);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(this.user));
     
     return this.user;
   }
@@ -54,8 +54,8 @@ export class GitHubOAuth {
   async logout() {
     this.token = null;
     this.user = null;
-    sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-    sessionStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_USER);
   }
 
   // GitHub API methods
